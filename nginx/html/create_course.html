@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Создание курса и задания</title>
+    <style>
+        body { font-size: 116.67%;
+            font-family: Arial, sans-serif;
+            background: #1e3c72;
+            color: white;
+            padding: 13.33px;
+            margin: 0;
+        }
+        .userbar {
+            margin-bottom: 20px;
+            padding: 8px 9.33px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        button {
+            font-size: 0.68em;
+            padding: 8px 14.67px;
+            margin-top: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+        }
+        input[type=text], input[type=number], textarea, select, input[type=file] {
+            font-size: 0.68em;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px;
+            border-radius: 8px;
+            border: none;
+        }
+        textarea {
+            height: 180px;
+            font-family: monospace;
+        }
+        pre {
+            background: #00000066;
+            padding: 8px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+        }
+        .logout {
+            margin-left: 10px;
+        }
+        .field {
+            margin-top: 12px;
+        }
+        .panel {
+            margin-top: 20px;
+            padding: 10.67px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+        }
+        .lang-box {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .lang-box label {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .primary {
+            background: white;
+            color: #1e3c72;
+        }
+        .hint {
+            margin-top: 6px;
+            opacity: 0.85;
+            font-size: 14.67px;
+        }
+        .test-row {
+            padding: 8px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 10px;
+            margin-top: 12px;
+        }
+        .row-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .mini {
+            padding: 4.67px 8px;
+            font-size: 14.67px;
+        }
+        .visible-box {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .group-tree {
+            display: grid;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .group-family {
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+        .group-family summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 8px 9.33px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            gap: 12px;
+        }
+        .group-family summary::-webkit-details-marker {
+            display: none;
+        }
+        .group-family summary::after {
+            content: "▾";
+            opacity: 0.85;
+            transition: transform 0.2s ease;
+        }
+        .group-family[open] summary::after {
+            transform: rotate(180deg);
+        }
+        .group-family-body { font-size: 116.67%;
+            padding: 0 9.33px 9.33px;
+        }
+        .group-number-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+        }
+        .group-number-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5.33px 6.67px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .group-number-item input {
+            margin: 0;
+        }
+        .group-empty {
+            opacity: 0.85;
+            padding: 6.67px 0;
+        }
+        @media (max-width: 800px) {
+            .row-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    
+        ::placeholder {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="userbar">
+        <span id="userInfo">Создание курса</span>
+        <button class="logout" onclick="goBack()">Назад</button>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </div>
+
+    <h1>Создание курса и задания</h1>
+
+    <div class="panel">
+        <div class="field">
+            <label for="courseMode">Куда добавить задание</label>
+            <select id="courseMode" onchange="toggleCourseMode()">
+                <option value="new">Создать новый курс</option>
+                <option value="existing">Добавить в существующий курс</option>
+            </select>
+        </div>
+
+        <div class="field" id="newCourseBlock">
+            <label for="courseName">Название курса</label>
+            <input type="text" id="courseName" placeholder="Например: Алгоритмы 2026">
+
+            <label for="groupSelect">Группы</label>
+            <div id="groupSelect" class="group-tree"></div>
+        </div>
+
+        <div class="field" id="existingCourseBlock" style="display:none;">
+            <label for="existingCourseSelect">Существующий курс</label>
+            <select id="existingCourseSelect"></select>
+            <div class="hint">Если курсов нет, создайте новый курс.</div>
+        </div>
+
+        <div class="field">
+            <label for="taskTitle">Название задания</label>
+            <input type="text" id="taskTitle" placeholder="Например: Лабораторная 1">
+        </div>
+
+        <div class="field">
+            <label for="taskText">Текст задания</label>
+            <textarea id="taskText" placeholder="Введите условие задания"></textarea>
+        </div>
+
+        <div class="field">
+            <label for="taskMode">Тип задания</label>
+            <select id="taskMode" onchange="updateTaskMode()">
+                <option value="expected" selected>Проверка по эталонному результату</option>
+                <option value="tests">Проверка по тестам (входные и выходные данные)</option>
+                <option value="none">Без автоматической проверки</option>
+            </select>
+        </div>
+
+        <div class="field" id="expectedBlock">
+            <label for="expectedOutputText">Ожидаемый результат</label>
+            <textarea id="expectedOutputText" placeholder="Например: a=2&#10;b=3&#10;c=4"></textarea>
+        </div>
+
+        <div class="field" id="expectedFileBlock">
+            <label for="expectedOutputFile">Или загрузите файл с ожидаемым результатом</label>
+            <input type="file" id="expectedOutputFile" accept=".txt,.out,.ans,text/plain">
+        </div>
+
+        <div class="field" id="testsBlock">
+            <label>Тесты ввода/вывода</label>
+            <div class="hint">Добавьте пары файлов. Для каждого теста можно выбрать, показывать его студенту или скрывать.</div>
+            <button class="mini" type="button" onclick="addTestRow()">Добавить тест</button>
+            <div id="testsContainer"></div>
+        </div>
+
+        <div class="field">
+            <label>Допустимые языки</label>
+            <div class="lang-box">
+                <label><input type="checkbox" name="allowed_language" value="c" checked> C</label>
+                <label><input type="checkbox" name="allowed_language" value="cpp" checked> C++</label>
+                <label><input type="checkbox" name="allowed_language" value="go" checked> Go</label>
+            </div>
+        </div>
+
+        <div class="field">
+            <label for="timeLimit">Ограничение времени, мс</label>
+            <input type="number" id="timeLimit" placeholder="Можно не вводить если нет ограничения">
+        </div>
+
+        <div class="field">
+            <label for="memoryLimit">Ограничение памяти, КБ</label>
+            <input type="number" id="memoryLimit" placeholder="Можно не вводить если нет ограничения">
+        </div>
+
+        <div class="actions">
+            <button class="primary" onclick="createCourse()">Сохранить</button>
+            <button onclick="goBack()">Отмена</button>
+        </div>
+
+        <h3>Результат:</h3>
+        <pre id="teacherOutput"></pre>
+    </div>
+
+    <script>
+        let testCounter = 0;
+
+        function getSession() {
+            const raw = localStorage.getItem("session");
+            if (!raw) return null;
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return null;
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function logout() {
+            localStorage.removeItem("session");
+            window.location.href = "index.html";
+        }
+
+        function goBack() {
+            window.location.href = "teacher.html";
+        }
+
+        function toggleCourseMode() {
+            const mode = document.getElementById("courseMode").value;
+            document.getElementById("newCourseBlock").style.display = mode === "new" ? "block" : "none";
+            document.getElementById("existingCourseBlock").style.display = mode === "existing" ? "block" : "none";
+        }
+
+        function updateTaskMode() {
+            const mode = document.getElementById("taskMode").value;
+            document.getElementById("expectedBlock").style.display = mode === "expected" ? "block" : "none";
+            document.getElementById("expectedFileBlock").style.display = mode === "expected" ? "block" : "none";
+            document.getElementById("testsBlock").style.display = mode === "tests" ? "block" : "none";
+
+            if (mode === "tests" && document.querySelectorAll(".test-row").length === 0) {
+                addTestRow();
+            }
+        }
+
+        function addTestRow() {
+            testCounter += 1;
+            const id = `test_${testCounter}`;
+            const container = document.getElementById("testsContainer");
+
+            const row = document.createElement("div");
+            row.className = "test-row";
+            row.dataset.testId = id;
+
+            row.innerHTML = `
+                <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+                    <strong>Тест ${testCounter}</strong>
+                    <button class="mini" type="button" onclick="removeTestRow('${id}')">Удалить</button>
+                </div>
+                <div class="row-grid">
+                    <div>
+                        <label>Входные данные</label>
+                        <input type="file" class="test-input">
+                    </div>
+                    <div>
+                        <label>Ожидаемый вывод</label>
+                        <input type="file" class="test-output">
+                    </div>
+                </div>
+                <label class="visible-box">
+                    <input type="checkbox" class="test-visible" checked>
+                    Показывать студентам
+                </label>
+            `;
+
+            container.appendChild(row);
+        }
+
+        function removeTestRow(id) {
+            const row = document.querySelector(`.test-row[data-test-id="${id}"]`);
+            if (row) row.remove();
+        }
+
+
+        function parseGroupPrefix(group) {
+            const rawPrefix = String(group.prefix ?? group.group_prefix ?? "").trim();
+            if (rawPrefix) {
+                return rawPrefix;
+            }
+            const rawName = String(group.name ?? group.group_name ?? "").trim();
+            if (!rawName) {
+                return "Группа";
+            }
+            const match = rawName.match(/^(.*?)(\d+)$/);
+            if (match) {
+                const prefix = match[1].trim();
+                return prefix || rawName;
+            }
+            return rawName;
+        }
+
+        function parseGroupNumber(group) {
+            const rawNumber = group.number ?? group.group_number;
+            if (rawNumber !== undefined && rawNumber !== null && String(rawNumber).trim() !== "") {
+                const parsed = Number(rawNumber);
+                return Number.isFinite(parsed) ? parsed : String(rawNumber).trim();
+            }
+            const rawName = String(group.name ?? group.group_name ?? "").trim();
+            const match = rawName.match(/^(.*?)(\d+)$/);
+            return match ? match[2] : "";
+        }
+
+        function getGroupSelectionValues() {
+            return Array.from(document.querySelectorAll('#groupSelect input[type="checkbox"][data-group-uuid]:checked'))
+                .map(cb => String(cb.dataset.groupUuid || "").trim())
+                .filter(Boolean);
+        }
+
+        function renderGroupTree(groups, selectedSet) {
+            const container = document.getElementById("groupSelect");
+
+            if (!Array.isArray(groups) || !groups.length) {
+                container.innerHTML = '<div class="group-empty">Группы не найдены</div>';
+                return;
+            }
+
+            const grouped = new Map();
+            for (const group of groups) {
+                const prefix = parseGroupPrefix(group);
+                if (!grouped.has(prefix)) {
+                    grouped.set(prefix, []);
+                }
+                grouped.get(prefix).push(group);
+            }
+
+            const prefixList = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b, "ru"));
+            container.innerHTML = "";
+
+            for (const prefix of prefixList) {
+                const items = grouped.get(prefix).slice().sort((a, b) => {
+                    const left = parseGroupNumber(a);
+                    const right = parseGroupNumber(b);
+                    const leftNum = Number(left);
+                    const rightNum = Number(right);
+                    if (Number.isFinite(leftNum) && Number.isFinite(rightNum)) {
+                        return leftNum - rightNum;
+                    }
+                    return String(left).localeCompare(String(right), "ru", { numeric: true });
+                });
+
+                const details = document.createElement("details");
+                details.className = "group-family";
+                if (items.some(item => selectedSet.has(String(item.uuid || item.group_uuid || "").trim()))) {
+                    details.open = true;
+                }
+
+                const summary = document.createElement("summary");
+                const prefixText = document.createElement("span");
+                prefixText.textContent = prefix;
+                const countBadge = document.createElement("span");
+                countBadge.textContent = String(items.length);
+                summary.appendChild(prefixText);
+                summary.appendChild(countBadge);
+                details.appendChild(summary);
+
+                const body = document.createElement("div");
+                body.className = "group-family-body";
+
+                const grid = document.createElement("div");
+                grid.className = "group-number-grid";
+
+                for (const group of items) {
+                    const groupUUID = String(group.uuid || group.group_uuid || "").trim();
+                    if (!groupUUID) {
+                        continue;
+                    }
+
+                    const label = document.createElement("label");
+                    label.className = "group-number-item";
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.dataset.groupUuid = groupUUID;
+                    checkbox.checked = selectedSet.has(groupUUID);
+
+                    const numberSpan = document.createElement("span");
+                    const numberText = parseGroupNumber(group);
+                    numberSpan.textContent = numberText ? String(numberText) : (group.name || group.group_name || groupUUID);
+
+                    label.appendChild(checkbox);
+                    label.appendChild(numberSpan);
+                    grid.appendChild(label);
+                }
+
+                body.appendChild(grid);
+                details.appendChild(body);
+                container.appendChild(details);
+            }
+        }
+
+        async function loadGroups(selectedGroupUUIDs = []) {
+            const selectedSet = new Set((Array.isArray(selectedGroupUUIDs) ? selectedGroupUUIDs : [selectedGroupUUIDs])
+                .map(value => String(value || "").trim())
+                .filter(Boolean));
+            const container = document.getElementById("groupSelect");
+
+            try {
+                const resp = await fetch("http://localhost:8081/groups");
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    container.innerHTML = `<div class="group-empty">Ошибка загрузки групп: ${escapeHtml(text || resp.statusText || "unknown error")}</div>`;
+                    return;
+                }
+
+                const groups = JSON.parse(text);
+                renderGroupTree(groups, selectedSet);
+            } catch (e) {
+                container.innerHTML = `<div class="group-empty">Ошибка загрузки групп: ${escapeHtml(e)}</div>`;
+            }
+        }
+
+        async function loadTeacherCoursesForSelect() {
+            const select = document.getElementById("existingCourseSelect");
+            const session = getSession();
+            try {
+                const url = new URL("http://localhost:8081/teacher/course-list");
+                url.searchParams.set("user_uuid", session.uuid);
+                url.searchParams.set("user_role", session.role);
+
+                const resp = await fetch(url.toString());
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    select.innerHTML = `<option value=''>Курсы не загрузились</option>`;
+                    return;
+                }
+
+                const courses = JSON.parse(text);
+                if (!courses.length) {
+                    select.innerHTML = "<option value=''>Курсов пока нет</option>";
+                    return;
+                }
+
+                select.innerHTML = "";
+                for (const course of courses) {
+                    const opt = document.createElement("option");
+                    opt.value = course.course_uuid;
+                    const groupNames = Array.isArray(course.group_names) && course.group_names.length
+                        ? course.group_names.join(", ")
+                        : (course.group_name || "—");
+                    opt.textContent = `${course.course_name} — ${groupNames} (${course.tasks_count} заданий)`;
+                    select.appendChild(opt);
+                }
+            } catch (e) {
+                select.innerHTML = `<option value=''>Ошибка загрузки курсов: ${e}</option>`;
+            }
+        }
+
+        async function createCourse() {
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const teacherOutput = document.getElementById("teacherOutput");
+            teacherOutput.textContent = "";
+
+            const courseMode = document.getElementById("courseMode").value;
+            const taskTitle = document.getElementById("taskTitle").value.trim();
+            const taskText = document.getElementById("taskText").value.trim();
+            const taskMode = document.getElementById("taskMode").value;
+            const expectedOutputText = document.getElementById("expectedOutputText").value;
+            const expectedOutputFile = document.getElementById("expectedOutputFile").files[0];
+            const timeLimit = document.getElementById("timeLimit").value.trim();
+            const memoryLimit = document.getElementById("memoryLimit").value.trim();
+
+            const allowed = [];
+            document.querySelectorAll('input[name="allowed_language"]:checked').forEach(cb => allowed.push(cb.value));
+
+            if (!taskTitle || !taskText) {
+                teacherOutput.textContent = "Заполните название задания и текст задания";
+                return;
+            }
+
+            let courseName = "";
+            let groupUUIDs = [];
+
+            if (courseMode === "new") {
+                courseName = document.getElementById("courseName").value.trim();
+                groupUUIDs = getGroupSelectionValues();
+                if (!courseName || !groupUUIDs.length) {
+                    teacherOutput.textContent = "Заполните название курса и выберите хотя бы одну группу";
+                    return;
+                }
+            } else {
+                const existingCourseUUID = document.getElementById("existingCourseSelect").value.trim();
+                if (!existingCourseUUID) {
+                    teacherOutput.textContent = "Выберите существующий курс";
+                    return;
+                }
+            }
+
+            if (taskMode === "expected") {
+                const hasText = expectedOutputText.trim() !== "";
+                const hasFile = !!expectedOutputFile;
+                if (!hasText && !hasFile) {
+                    teacherOutput.textContent = "Для режима эталонного результата заполните текст или загрузите файл";
+                    return;
+                }
+            }
+
+            if (taskMode === "tests") {
+                const rows = document.querySelectorAll(".test-row");
+                if (!rows.length) {
+                    teacherOutput.textContent = "Добавьте хотя бы один тест";
+                    return;
+                }
+
+                for (const row of rows) {
+                    const inputFile = row.querySelector(".test-input").files[0];
+                    const outputFile = row.querySelector(".test-output").files[0];
+                    if (!inputFile || !outputFile) {
+                        teacherOutput.textContent = "Во всех тестах должны быть выбраны входной и выходной файлы";
+                        return;
+                    }
+                }
+            }
+
+            const formData = new FormData();
+            formData.append("user_uuid", session.uuid);
+            formData.append("user_role", session.role);
+            formData.append("task_title", taskTitle);
+            formData.append("task_text", taskText);
+            formData.append("task_mode", taskMode);
+            formData.append("expected_output_text", expectedOutputText);
+            formData.append("output_text", expectedOutputText);
+            formData.append("time_limit_ms", timeLimit);
+            formData.append("memory_limit_kb", memoryLimit);
+
+            formData.append("create_new_course", courseMode === "new" ? "1" : "0");
+
+            if (courseMode === "new") {
+                formData.append("course_name", courseName);
+                for (const groupUUID of groupUUIDs) {
+                    formData.append("group_uuids", groupUUID);
+                }
+            } else {
+                formData.append("course_uuid", document.getElementById("existingCourseSelect").value.trim());
+            }
+
+            if (expectedOutputFile) {
+                formData.append("expected_output_file", expectedOutputFile);
+                formData.append("output_file", expectedOutputFile);
+            }
+
+            if (taskMode === "tests") {
+                const rows = document.querySelectorAll(".test-row");
+                rows.forEach((row, index) => {
+                    const inputFile = row.querySelector(".test-input").files[0];
+                    const outputFile = row.querySelector(".test-output").files[0];
+                    const visible = row.querySelector(".test-visible").checked;
+
+                    formData.append("test_input_text", "");
+                    formData.append("test_output_text", "");
+                    if (inputFile) {
+                        formData.append(`test_input_file_${index}`, inputFile);
+                    }
+                    if (outputFile) {
+                        formData.append(`test_output_file_${index}`, outputFile);
+                    }
+                    formData.append("test_visible", visible ? "1" : "0");
+                });
+            }
+
+            for (const lang of allowed) {
+                formData.append("allowed_languages", lang);
+            }
+
+            teacherOutput.textContent = "Сохранение...";
+
+            try {
+                const resp = await fetch("http://localhost:8081/teacher/course", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const text = await resp.text();
+                teacherOutput.textContent = text;
+
+                if (resp.ok) {
+                    setTimeout(() => {
+                        window.location.href = "teacher.html";
+                    }, 900);
+                }
+            } catch (e) {
+                teacherOutput.textContent = "Ошибка: " + e;
+            }
+        }
+
+        const session = getSession();
+        if (!session) {
+            window.location.href = "index.html";
+        } else if (session.role !== "teacher") {
+            window.location.href = "student.html";
+        } else {
+            document.getElementById("userInfo").textContent =
+                `Пользователь: ${session.name} | Роль: ${session.role}`;
+            toggleCourseMode();
+            updateTaskMode();
+            loadGroups();
+            loadTeacherCoursesForSelect();
+        }
+    </script>
+</body>
+</html>

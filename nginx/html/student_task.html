@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Задание студента</title>
+    <style>
+        :root {
+            --bg: #1e3c72;
+            --card: rgba(255,255,255,0.08);
+            --card-strong: rgba(255,255,255,0.12);
+            --text: #ffffff;
+            --muted: rgba(255,255,255,0.8);
+            --border: rgba(255,255,255,0.14);
+            --input-bg: rgba(255,255,255,0.96);
+            --input-text: #1b2f4f;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body { font-size: 116.67%;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body { font-size: 116.67%;
+            margin: 0;
+            padding: 10.67px;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page {
+            width: 100%;
+        }
+
+        .topbar {
+            width: 100%;
+            margin-bottom: 16px;
+            padding: 8px 9.33px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .topbar-left, .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            font-size: 0.68em;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            background: #ffffff;
+            color: #183153;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        button:hover {
+            opacity: 0.95;
+        }
+
+        .card {
+            width: 100%;
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .muted {
+            opacity: 0.85;
+        }
+
+        .meta {
+            font-size: 15.33px;
+            opacity: 0.95;
+            margin-top: 6px;
+            color: var(--muted);
+        }
+
+        pre {
+            margin: 0;
+            background: #00000066;
+            padding: 9.33px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            border: 1px solid rgba(255,255,255,0.12);
+            overflow-x: auto;
+            min-height: 60px;
+            width: 100%;
+        }
+
+        .form-group {
+            margin-top: 12px;
+            width: 100%;
+        }
+
+        .label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+
+        select,
+        textarea,
+        input[type="file"] {
+            font-size: 0.68em;
+            width: 100%;
+            display: block;
+            border: none;
+            border-radius: 10px;
+            padding: 8px;
+            background: var(--input-bg);
+            color: var(--input-text);
+            font: inherit;
+        }
+
+        select {
+            height: 46px;
+        }
+
+        textarea {
+            min-height: 320px;
+            resize: vertical;
+            font-family: monospace;
+        }
+
+        .actions {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .actions button {
+            font-size: 0.68em;
+            width: auto;
+        }
+
+        .section-title {
+            margin: 0 0 12px 0;
+        }
+
+        .output-box {
+            margin-top: 12px;
+            width: 100%;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        @media (max-width: 640px) {
+            body { font-size: 116.67%;
+                padding: 8px;
+            }
+
+            .card {
+                padding: 9.33px;
+            }
+
+            .topbar {
+                align-items: stretch;
+            }
+
+            .topbar-left,
+            .topbar-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+    
+        ::placeholder {
+            font-size: 0.68em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span id="userInfo">Задание</span>
+            </div>
+            <div class="topbar-right">
+                <button onclick="goBackToCourse()">Назад к курсу</button>
+                <button onclick="logout()">Выйти</button>
+            </div>
+        </div>
+
+        <h1 id="taskTitle">Загрузка задания...</h1>
+        <div id="taskSubtitle" class="muted"></div>
+
+        <div class="card">
+            <h3 class="section-title">Информация о задании</h3>
+            <div id="courseMeta"></div>
+
+            <h3 class="section-title" style="margin-top: 18px;">Условие задания</h3>
+            <pre id="taskText">Загрузка...</pre>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Проверка кода</h2>
+
+            <div class="form-group">
+                <label class="label" for="language">Язык:</label>
+                <select id="language" onchange="updateVersions()"></select>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="version">Версия:</label>
+                <select id="version"></select>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="code">Вставьте код:</label>
+                <textarea id="code" placeholder="Вставьте код здесь"></textarea>
+            </div>
+
+            <div class="actions">
+                <button onclick="runCheck()">Проверить код</button>
+            </div>
+
+            <div class="form-group">
+                <label class="label" for="fileInput">Или загрузите файл:</label>
+                <input type="file" id="fileInput">
+            </div>
+
+            <div class="actions">
+                <button onclick="runFileCheck()">Проверить файл</button>
+            </div>
+
+            <div class="output-box">
+                <h3>Вывод:</h3>
+                <pre id="output"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const outputElem = document.getElementById("output");
+        const taskState = {
+            session: null,
+            course: null,
+            task: null
+        };
+
+        const versionsByLanguage = {
+            c: ["c11", "c17", "c23"],
+            cpp: ["c++11", "c++14", "c++17", "c++20", "c++23"],
+            go: ["go1.18", "go1.21", "go1.25", "go1.26"]
+        };
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function getSession() {
+            const raw = localStorage.getItem("session");
+            if (!raw) return null;
+            try {
+                const session = JSON.parse(raw);
+                if (!session || typeof session !== "object") return null;
+                if (!session.uuid) {
+                    session.uuid = session.user_uuid || session.student_uuid || session.teacher_uuid || "";
+                }
+                if (!session.role) {
+                    session.role = session.user_role || (session.student_uuid ? "student" : session.teacher_uuid ? "teacher" : "");
+                }
+                return session;
+            } catch {
+                return null;
+            }
+        }
+
+        function getParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function logout() {
+            localStorage.removeItem("session");
+            window.location.href = "index.html";
+        }
+
+        function goBackToCourse() {
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            if (courseUUID) {
+                window.location.href = `student_course.html?course_uuid=${encodeURIComponent(courseUUID)}`;
+                return;
+            }
+            window.location.href = "student.html";
+        }
+
+        function updateVersions() {
+            const language = document.getElementById("language").value;
+            const versionSelect = document.getElementById("version");
+            const versions = versionsByLanguage[language] || [];
+            versionSelect.innerHTML = "";
+
+            for (const version of versions) {
+                const option = document.createElement("option");
+                option.value = version;
+                option.textContent = version;
+                versionSelect.appendChild(option);
+            }
+        }
+
+        function fillLanguages(allowedLanguages) {
+            const languageSelect = document.getElementById("language");
+            const langs = (allowedLanguages && allowedLanguages.length) ? allowedLanguages : ["c", "cpp", "go"];
+
+            languageSelect.innerHTML = "";
+            for (const lang of langs) {
+                const option = document.createElement("option");
+                option.value = lang;
+                const displayNames = { c: 'C', cpp: 'C++', go: 'Go' };
+                option.textContent = displayNames[lang] || lang.toUpperCase();
+                languageSelect.appendChild(option);
+            }
+
+            updateVersions();
+        }
+
+        function renderMeta(course, task) {
+            const meta = [];
+            meta.push(`Курс: ${course.course_name || ""}`);
+            meta.push(`UUID курса: ${course.course_uuid || ""}`);
+            meta.push(`UUID задания: ${task.task_uuid || ""}`);
+            if (task.task_mode) meta.push(`Режим проверки: ${task.task_mode}`);
+            if (task.allowed_languages && task.allowed_languages.length) meta.push(`Допустимые языки: ${task.allowed_languages.join(", ")}`);
+            if (task.tests_count !== undefined && task.tests_count !== null) meta.push(`Количество тестов: ${task.tests_count}`);
+            if (task.time_limit_ms) meta.push(`Ограничение времени: ${task.time_limit_ms} мс`);
+            if (task.memory_limit_kb) meta.push(`Ограничение памяти: ${task.memory_limit_kb} КБ`);
+
+            document.getElementById("courseMeta").innerHTML =
+                meta.map(x => `<div class="meta">${escapeHtml(x)}</div>`).join("");
+        }
+
+        function setTaskView(course, task) {
+            taskState.course = course;
+            taskState.task = task;
+
+            document.getElementById("taskTitle").textContent = task.task_title || course.course_name || "Задание";
+            document.getElementById("taskSubtitle").textContent = `${course.course_name || ""} · ${course.group_name || ""}`;
+            document.getElementById("taskText").textContent = task.task_text || "Текст задания отсутствует";
+
+            renderMeta(course, task);
+            fillLanguages(task.allowed_languages);
+        }
+
+        async function loadTask() {
+            const session = getSession();
+            if (!session || session.role !== "student") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            taskState.session = session;
+            document.getElementById("userInfo").textContent =
+                `Пользователь: ${session.name} | Роль: ${session.role}`;
+
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            const desiredTaskUUID = params.get("task_uuid");
+
+            if (!courseUUID) {
+                document.getElementById("taskTitle").textContent = "Не выбран курс";
+                document.getElementById("taskText").textContent = "Нет параметра course_uuid";
+                return;
+            }
+
+            try {
+                const url = new URL("http://localhost:8081/student/course");
+                url.searchParams.set("user_uuid", session.uuid);
+                url.searchParams.set("user_role", session.role);
+                url.searchParams.set("course_uuid", courseUUID);
+
+                const resp = await fetch(url.toString());
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    document.getElementById("taskTitle").textContent = "Ошибка загрузки задания";
+                    document.getElementById("taskText").textContent = text || "Не удалось загрузить данные";
+                    return;
+                }
+
+                const course = JSON.parse(text);
+                const tasks = Array.isArray(course.tasks) ? course.tasks : [];
+
+                if (!tasks.length) {
+                    document.getElementById("taskTitle").textContent = course.course_name || "Курс";
+                    document.getElementById("taskText").textContent = "В этом курсе ещё нет заданий";
+                    document.getElementById("courseMeta").innerHTML = `
+                        <div class="meta">${escapeHtml(`Курс: ${course.course_name || ""}`)}</div>
+                        <div class="meta">${escapeHtml(`UUID курса: ${course.course_uuid || ""}`)}</div>
+                    `;
+                    return;
+                }
+
+                let task = null;
+                if (desiredTaskUUID) {
+                    task = tasks.find(t => t.task_uuid === desiredTaskUUID) || null;
+                }
+
+                if (!task) {
+                    task = tasks[0];
+                    params.set("task_uuid", task.task_uuid);
+                    history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
+                }
+
+                setTaskView(course, task);
+            } catch (e) {
+                document.getElementById("taskTitle").textContent = "Ошибка";
+                document.getElementById("taskText").textContent = "Ошибка загрузки: " + e;
+            }
+        }
+
+        async function runCheck() {
+            const session = taskState.session || getSession();
+            if (!session || session.role !== "student" || !session.uuid) {
+                outputElem.textContent = "Не удалось определить пользователя. Выйдите и войдите снова.";
+                return;
+            }
+
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            const taskUUID = params.get("task_uuid");
+            const code = document.getElementById("code").value;
+            const language = document.getElementById("language").value;
+            const version = document.getElementById("version").value;
+
+            if (!code) {
+                alert("Введите код");
+                return;
+            }
+            if (!courseUUID || !taskUUID) {
+                outputElem.textContent = "Не выбран курс или задание";
+                return;
+            }
+
+            outputElem.textContent = "Проверка...";
+            const formData = new FormData();
+            formData.append("course_uuid", courseUUID);
+            formData.append("task_uuid", taskUUID);
+            formData.append("code", code);
+            formData.append("language", language);
+            formData.append("version", version);
+            formData.append("user_uuid", session.uuid);
+            formData.append("user_role", session.role);
+            formData.append("student_uuid", session.uuid);
+
+            try {
+                const resp = await fetch("http://localhost:8081/check", {
+                    method: "POST",
+                    body: formData
+                });
+                outputElem.textContent = await resp.text();
+            } catch (e) {
+                outputElem.textContent = "Ошибка: " + e;
+            }
+        }
+
+        async function runFileCheck() {
+            const session = taskState.session || getSession();
+            if (!session || session.role !== "student" || !session.uuid) {
+                outputElem.textContent = "Не удалось определить пользователя. Выйдите и войдите снова.";
+                return;
+            }
+
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            const taskUUID = params.get("task_uuid");
+            const fileInput = document.getElementById("fileInput");
+            const language = document.getElementById("language").value;
+            const version = document.getElementById("version").value;
+
+            if (!fileInput.files.length) {
+                alert("Выберите файл");
+                return;
+            }
+            if (!courseUUID || !taskUUID) {
+                outputElem.textContent = "Не выбран курс или задание";
+                return;
+            }
+
+            outputElem.textContent = "Проверка файла...";
+            const formData = new FormData();
+            formData.append("course_uuid", courseUUID);
+            formData.append("task_uuid", taskUUID);
+            formData.append("file", fileInput.files[0]);
+            formData.append("language", language);
+            formData.append("version", version);
+            formData.append("user_uuid", session.uuid);
+            formData.append("user_role", session.role);
+            formData.append("student_uuid", session.uuid);
+
+            try {
+                const resp = await fetch("http://localhost:8081/check-file", {
+                    method: "POST",
+                    body: formData
+                });
+                outputElem.textContent = await resp.text();
+            } catch (e) {
+                outputElem.textContent = "Ошибка: " + e;
+            }
+        }
+
+        loadTask();
+    </script>
+</body>
+</html>

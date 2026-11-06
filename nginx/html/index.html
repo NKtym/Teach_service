@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Вход в систему</title>
+    <style>
+        body { font-size: 116.67%;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            padding: 13.33px;
+            box-sizing: border-box;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 380px;
+            padding: 18.67px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.12);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 28.67px;
+        }
+
+        input, button {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 9.33px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 17.33px;
+        }
+
+        input {
+            outline: none;
+        }
+
+        button {
+            font-size: 0.68em;
+            cursor: pointer;
+            background: #ffffff;
+            color: #1e3c72;
+            font-weight: bold;
+        }
+
+        .error {
+            margin-top: 12px;
+            color: #ffd1d1;
+            min-height: 20px;
+        }
+
+        .hint {
+            margin-top: 10px;
+            font-size: 14.67px;
+            opacity: 0.85;
+            line-height: 1.4;
+        }
+    
+        ::placeholder {
+            font-size: 0.68em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Вход</h1>
+        <input id="login" type="text" placeholder="Логин">
+        <input id="password" type="password" placeholder="Пароль">
+        <button onclick="doLogin()">Войти</button>
+        <div class="error" id="error"></div>
+    </div>
+
+    <script>
+        function goByRole(role) {
+            if (role === "teacher") {
+                window.location.href = "teacher.html";
+            } else if (role === "student") {
+                window.location.href = "student.html";
+            } else {
+                window.location.href = "index.html";
+            }
+        }
+
+        async function doLogin() {
+            const login = document.getElementById("login").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const errorBox = document.getElementById("error");
+            errorBox.textContent = "";
+
+            if (!login || !password) {
+                errorBox.textContent = "Введите логин и пароль";
+                return;
+            }
+
+            try {
+                const resp = await fetch("http://localhost:8081/login", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ login, password })
+                });
+
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    errorBox.textContent = text || "Ошибка входа";
+                    return;
+                }
+
+                const data = JSON.parse(text);
+                const session = {
+                    ...data,
+                    user_uuid: data.uuid || "",
+                    user_role: data.role || ""
+                };
+                localStorage.setItem("session", JSON.stringify(session));
+                goByRole(session.role);
+            } catch (e) {
+                errorBox.textContent = "Ошибка сети: " + e;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Панель студента</title>
+    <style>
+        :root {
+            --bg: #1e3c72;
+            --card: rgba(255,255,255,0.08);
+            --card-strong: rgba(255,255,255,0.12);
+            --text: #ffffff;
+            --muted: rgba(255,255,255,0.8);
+            --border: rgba(255,255,255,0.14);
+        }
+        body { font-size: 116.67%;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 13.33px;
+            margin: 0;
+        }
+        .userbar {
+            margin-bottom: 20px;
+            padding: 8px 9.33px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        button {
+            font-size: 0.68em;
+            padding: 8px 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #183153;
+            font-weight: 700;
+        }
+        button:hover { opacity: 0.95; }
+        .panel {
+            margin-top: 20px;
+            padding: 10.67px;
+            background: var(--card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+        .course-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            margin-top: 14px;
+        }
+        .course-card {
+            padding: 10.67px;
+            border-radius: 14px;
+            background: var(--card-strong);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .course-card h3 { margin: 0; }
+        .course-meta {
+            font-size: 15.33px;
+            opacity: 0.95;
+            color: var(--muted);
+        }
+        .course-actions {
+            margin-top: auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .muted { opacity: 0.85; }
+    
+        ::placeholder {
+            font-size: 0.68em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="userbar">
+        <span id="userInfo">Студент</span>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </div>
+
+    <h1>Панель студента</h1>
+
+    <div class="panel">
+        <h2>Мои курсы</h2>
+        <div id="studentCourses" class="muted">Загрузка...</div>
+    </div>
+
+    <script>
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function getSession() {
+            const raw = localStorage.getItem("session");
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch { return null; }
+        }
+
+        function logout() {
+            localStorage.removeItem("session");
+            window.location.href = "index.html";
+        }
+
+        function openCourse(courseUUID) {
+            window.location.href = `student_course.html?course_uuid=${encodeURIComponent(courseUUID)}`;
+        }
+
+        function renderCourseCard(course) {
+            const tasksCount = course.tasks_count ?? (Array.isArray(course.tasks) ? course.tasks.length : 0);
+
+            return `
+                <div class="course-card">
+                    <div>
+                        <h3>${escapeHtml(course.course_name)}</h3>
+                        <div class="course-meta">UUID курса: ${escapeHtml(course.course_uuid)}</div>
+                        <div class="course-meta">Группа: ${escapeHtml(course.group_name)}</div>
+                        <div class="course-meta">Заданий: ${escapeHtml(tasksCount)}</div>
+                    </div>
+                    <div class="course-actions">
+                        <button onclick="openCourse('${escapeHtml(course.course_uuid)}')">Открыть курс</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadStudentCourses() {
+            const session = getSession();
+            if (!session || session.role !== "student") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById("userInfo").textContent =
+                `Пользователь: ${session.name} | Роль: ${session.role}`;
+
+            const container = document.getElementById("studentCourses");
+            container.textContent = "Загрузка...";
+
+            try {
+                const url = new URL("http://localhost:8081/student/courses");
+                url.searchParams.set("user_uuid", session.uuid);
+                url.searchParams.set("user_role", session.role);
+
+                const resp = await fetch(url.toString());
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    container.textContent = text || "Не удалось загрузить курсы";
+                    return;
+                }
+
+                const courses = JSON.parse(text);
+                if (!courses.length) {
+                    container.textContent = "Курсы не найдены";
+                    return;
+                }
+
+                container.innerHTML = `<div class="course-grid"></div>`;
+                const grid = container.querySelector(".course-grid");
+
+                for (const course of courses) {
+                    const div = document.createElement("div");
+                    div.innerHTML = renderCourseCard(course);
+                    grid.appendChild(div.firstElementChild);
+                }
+            } catch (e) {
+                container.textContent = "Ошибка загрузки курсов: " + e;
+            }
+        }
+
+        loadStudentCourses();
+    </script>
+</body>
+</html>

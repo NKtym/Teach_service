@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  checker:
+    build: ./checker
+    container_name: checker
+    volumes:
+      - ./storage/submissions:/storage/submissions
+      - ./storage/tests:/storage/tests
+      - ./test:/test
+    stdin_open: true
+    tty: true
+
+  api:
+    build: ./api
+    container_name: api
+    volumes:
+      - ./storage/submissions:/storage/submissions
+      - ./storage/tests:/storage/tests
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "8081:8081"
+    depends_on:
+      - checker
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/html:/usr/share/nginx/html
+    depends_on:
+      - api
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_DB: code_checker
+      POSTGRES_USER: pavel
+      POSTGRES_PASSWORD: 1234554321
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

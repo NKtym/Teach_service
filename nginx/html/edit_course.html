@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Редактирование курса</title>
+    <style>
+        body { font-size: 116.67%; font-family: Arial, sans-serif; background: #1e3c72; color: #fff; margin: 0; padding: 13.33px; }
+        .userbar, .panel { background: rgba(255,255,255,0.08); border-radius: 12px; }
+        .userbar { margin-bottom: 20px; padding: 8px 9.33px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .panel { padding: 10.67px; margin-top: 20px; }
+        .field { margin-top: 12px; }
+        input[type=text], select {
+            font-size: 0.68em; width: 100%; box-sizing: border-box; padding: 8px; border: none; border-radius: 8px; margin-top: 8px; }
+        button {
+            font-size: 0.68em; padding: 8px 12px; border: none; border-radius: 8px; cursor: pointer; }
+        .primary { background: #fff; color: #1e3c72; font-weight: 700; }
+        .hint { opacity: 0.85; font-size: 14.67px; margin-top: 6px; }
+        pre { background: #00000066; padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+        .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+
+        .group-tree {
+            display: grid;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .group-family {
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+        .group-family summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 8px 9.33px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            gap: 12px;
+        }
+        .group-family summary::-webkit-details-marker {
+            display: none;
+        }
+        .group-family summary::after {
+            content: "▾";
+            opacity: 0.85;
+            transition: transform 0.2s ease;
+        }
+        .group-family[open] summary::after {
+            transform: rotate(180deg);
+        }
+        .group-family-body { font-size: 116.67%;
+            padding: 0 9.33px 9.33px;
+        }
+        .group-number-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+            gap: 8px;
+        }
+        .group-number-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5.33px 6.67px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .group-number-item input {
+            margin: 0;
+        }
+        .group-empty {
+            opacity: 0.85;
+            padding: 6.67px 0;
+        }
+    
+        ::placeholder {
+            font-size: 0.68em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="userbar">
+        <span id="userInfo">Редактирование курса</span>
+        <button onclick="goBack()">Назад</button>
+        <button onclick="logout()">Выйти</button>
+    </div>
+
+    <h1>Редактирование курса</h1>
+
+    <div class="panel">
+        <div class="field">
+            <label for="courseName">Название курса</label>
+            <input type="text" id="courseName" placeholder="Например: Алгоритмы 2026">
+        </div>
+
+        <div class="field">
+            <label for="groupSelect">Группы</label>
+            <div id="groupSelect" class="group-tree"></div>
+        </div>
+
+        <div class="actions">
+            <button class="primary" onclick="saveCourse()">Сохранить</button>
+            <button onclick="goBack()">Отмена</button>
+        </div>
+
+        <h3>Результат:</h3>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        let currentCourseUUID = "";
+
+        function getSession() {
+            const raw = localStorage.getItem("session");
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch { return null; }
+        }
+
+        function getParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+        }
+
+        function logout() {
+            localStorage.removeItem("session");
+            window.location.href = "index.html";
+        }
+
+        function goBack() {
+            if (currentCourseUUID) {
+                window.location.href = `teacher_course.html?course_uuid=${encodeURIComponent(currentCourseUUID)}`;
+                return;
+            }
+            window.location.href = "teacher.html";
+        }
+
+
+        function parseGroupPrefix(group) {
+            const rawPrefix = String(group.prefix ?? group.group_prefix ?? "").trim();
+            if (rawPrefix) {
+                return rawPrefix;
+            }
+            const rawName = String(group.name ?? group.group_name ?? "").trim();
+            if (!rawName) {
+                return "Группа";
+            }
+            const match = rawName.match(/^(.*?)(\d+)$/);
+            if (match) {
+                const prefix = match[1].trim();
+                return prefix || rawName;
+            }
+            return rawName;
+        }
+
+        function parseGroupNumber(group) {
+            const rawNumber = group.number ?? group.group_number;
+            if (rawNumber !== undefined && rawNumber !== null && String(rawNumber).trim() !== "") {
+                const parsed = Number(rawNumber);
+                return Number.isFinite(parsed) ? parsed : String(rawNumber).trim();
+            }
+            const rawName = String(group.name ?? group.group_name ?? "").trim();
+            const match = rawName.match(/^(.*?)(\d+)$/);
+            return match ? match[2] : "";
+        }
+
+        function getGroupSelectionValues() {
+            return Array.from(document.querySelectorAll('#groupSelect input[type="checkbox"][data-group-uuid]:checked'))
+                .map(cb => String(cb.dataset.groupUuid || "").trim())
+                .filter(Boolean);
+        }
+
+        function renderGroupTree(groups, selectedSet) {
+            const container = document.getElementById("groupSelect");
+
+            if (!Array.isArray(groups) || !groups.length) {
+                container.innerHTML = '<div class="group-empty">Группы не найдены</div>';
+                return;
+            }
+
+            const grouped = new Map();
+            for (const group of groups) {
+                const prefix = parseGroupPrefix(group);
+                if (!grouped.has(prefix)) {
+                    grouped.set(prefix, []);
+                }
+                grouped.get(prefix).push(group);
+            }
+
+            const prefixList = Array.from(grouped.keys()).sort((a, b) => a.localeCompare(b, "ru"));
+            container.innerHTML = "";
+
+            for (const prefix of prefixList) {
+                const items = grouped.get(prefix).slice().sort((a, b) => {
+                    const left = parseGroupNumber(a);
+                    const right = parseGroupNumber(b);
+                    const leftNum = Number(left);
+                    const rightNum = Number(right);
+                    if (Number.isFinite(leftNum) && Number.isFinite(rightNum)) {
+                        return leftNum - rightNum;
+                    }
+                    return String(left).localeCompare(String(right), "ru", { numeric: true });
+                });
+
+                const details = document.createElement("details");
+                details.className = "group-family";
+                if (items.some(item => selectedSet.has(String(item.uuid || item.group_uuid || "").trim()))) {
+                    details.open = true;
+                }
+
+                const summary = document.createElement("summary");
+                const prefixText = document.createElement("span");
+                prefixText.textContent = prefix;
+                const countBadge = document.createElement("span");
+                countBadge.textContent = String(items.length);
+                summary.appendChild(prefixText);
+                summary.appendChild(countBadge);
+                details.appendChild(summary);
+
+                const body = document.createElement("div");
+                body.className = "group-family-body";
+
+                const grid = document.createElement("div");
+                grid.className = "group-number-grid";
+
+                for (const group of items) {
+                    const groupUUID = String(group.uuid || group.group_uuid || "").trim();
+                    if (!groupUUID) {
+                        continue;
+                    }
+
+                    const label = document.createElement("label");
+                    label.className = "group-number-item";
+
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.dataset.groupUuid = groupUUID;
+                    checkbox.checked = selectedSet.has(groupUUID);
+
+                    const numberSpan = document.createElement("span");
+                    const numberText = parseGroupNumber(group);
+                    numberSpan.textContent = numberText ? String(numberText) : (group.name || group.group_name || groupUUID);
+
+                    label.appendChild(checkbox);
+                    label.appendChild(numberSpan);
+                    grid.appendChild(label);
+                }
+
+                body.appendChild(grid);
+                details.appendChild(body);
+                container.appendChild(details);
+            }
+        }
+
+        async function loadGroups(selectedGroupUUIDs = []) {
+            const selectedSet = new Set((Array.isArray(selectedGroupUUIDs) ? selectedGroupUUIDs : [selectedGroupUUIDs])
+                .map(value => String(value || "").trim())
+                .filter(Boolean));
+            const container = document.getElementById("groupSelect");
+
+            try {
+                const resp = await fetch("http://localhost:8081/groups");
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    container.innerHTML = `<div class="group-empty">Ошибка загрузки групп: ${escapeHtml(text || resp.statusText || "unknown error")}</div>`;
+                    return;
+                }
+
+                const groups = JSON.parse(text);
+                renderGroupTree(groups, selectedSet);
+            } catch (e) {
+                container.innerHTML = `<div class="group-empty">Ошибка загрузки групп: ${escapeHtml(e)}</div>`;
+            }
+        }
+
+        async function loadCourse() {
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById("userInfo").textContent = `Пользователь: ${session.name} | Роль: ${session.role}`;
+
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            if (!courseUUID) {
+                document.getElementById("output").textContent = "Не указан course_uuid";
+                return;
+            }
+            currentCourseUUID = courseUUID;
+
+            try {
+                const url = new URL("http://localhost:8081/teacher/courses");
+                url.searchParams.set("user_uuid", session.uuid);
+                url.searchParams.set("user_role", session.role);
+                const resp = await fetch(url.toString());
+                const text = await resp.text();
+                if (!resp.ok) {
+                    document.getElementById("output").textContent = text || "Не удалось загрузить курсы";
+                    return;
+                }
+                const courses = JSON.parse(text);
+                const course = Array.isArray(courses) ? courses.find(item => item.course_uuid === courseUUID) : null;
+                if (!course) {
+                    document.getElementById("output").textContent = "Курс не найден";
+                    return;
+                }
+
+                document.getElementById("courseName").value = course.course_name || "";
+                await loadGroups(course.group_uuids || []);
+                document.getElementById("output").textContent = `Редактируется курс ${course.course_name || course.course_uuid}`;
+            } catch (e) {
+                document.getElementById("output").textContent = "Ошибка загрузки: " + e;
+            }
+        }
+
+        async function saveCourse() {
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const courseName = document.getElementById("courseName").value.trim();
+            const groupUUIDs = getGroupSelectionValues();
+            const output = document.getElementById("output");
+
+            if (!currentCourseUUID) {
+                output.textContent = "Не выбран курс";
+                return;
+            }
+            if (!courseName || !groupUUIDs.length) {
+                output.textContent = "Заполни название курса и выбери хотя бы одну группу";
+                return;
+            }
+
+            const body = new FormData();
+            body.append("user_uuid", session.uuid);
+            body.append("user_role", session.role);
+            body.append("course_uuid", currentCourseUUID);
+            body.append("course_name", courseName);
+            for (const groupUUID of groupUUIDs) {
+                body.append("group_uuids", groupUUID);
+            }
+
+            output.textContent = "Сохранение...";
+            try {
+                const resp = await fetch("http://localhost:8081/teacher/course/update", {
+                    method: "POST",
+                    body
+                });
+                const text = await resp.text();
+                output.textContent = text;
+                if (resp.ok) {
+                    setTimeout(() => {
+                        window.location.href = `teacher_course.html?course_uuid=${encodeURIComponent(currentCourseUUID)}`;
+                    }, 700);
+                }
+            } catch (e) {
+                output.textContent = "Ошибка: " + e;
+            }
+        }
+
+        loadCourse();
+    </script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Задание преподавателя</title>
+    <style>
+        :root {
+            --bg: #1e3c72;
+            --card: rgba(255,255,255,0.08);
+            --card-strong: rgba(255,255,255,0.12);
+            --text: #ffffff;
+            --muted: rgba(255,255,255,0.8);
+            --border: rgba(255,255,255,0.14);
+            --danger: #d9534f;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { font-size: 116.67%;
+            width: 100%;
+            min-height: 100%;
+        }
+
+        body { font-size: 116.67%;
+            margin: 0;
+            padding: 10.67px;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .page { width: 100%; }
+
+        .topbar {
+            width: 100%;
+            margin-bottom: 16px;
+            padding: 8px 9.33px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .topbar-left, .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            font-size: 0.68em;
+            border: none;
+            border-radius: 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            background: #ffffff;
+            color: #183153;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        button:hover { opacity: 0.95; }
+
+        .danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .card {
+            width: 100%;
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        .muted { opacity: 0.85; }
+
+        .meta {
+            font-size: 15.33px;
+            opacity: 0.95;
+            margin-top: 6px;
+            color: var(--muted);
+            word-break: break-word;
+        }
+
+        pre {
+            margin: 0;
+            background: #00000066;
+            padding: 9.33px;
+            border-radius: 10px;
+            white-space: pre-wrap;
+            border: 1px solid rgba(255,255,255,0.12);
+            overflow-x: auto;
+            min-height: 60px;
+            width: 100%;
+        }
+
+        .results-wrap {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+        }
+
+        .clickable-row { cursor: pointer; }
+        .clickable-row:hover td { background: rgba(255,255,255,0.06); }
+
+        table {
+            width: 100%;
+            min-width: 900px;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 8px 6.67px;
+            text-align: left;
+            vertical-align: top;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            font-size: 15.33px;
+        }
+
+        th { background: rgba(255,255,255,0.10); }
+        tr:hover td { background: rgba(255,255,255,0.04); }
+
+        h1 { margin-top: 0; }
+        .section-title { margin: 0 0 12px 0; }
+
+        .filter-panel {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 12px 0 8px;
+        }
+
+        .filter-panel label {
+            color: var(--muted);
+            font-size: 0.95em;
+        }
+
+        .filter-panel select {
+            min-width: 260px;
+            max-width: 100%;
+        }
+
+        .summary {
+            margin-top: 12px;
+            color: var(--muted);
+        }
+
+        @media (max-width: 640px) {
+            body { font-size: 116.67%; padding: 8px; }
+            .card { padding: 9.33px; }
+            .topbar { align-items: stretch; }
+            .topbar-left, .topbar-right {
+                width: 100%;
+                justify-content: space-between;
+            }
+            button {
+            font-size: 0.68em; width: 100%; }
+        }
+    
+        ::placeholder {
+            font-size: 0.68em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="topbar">
+            <div class="topbar-left">
+                <span id="userInfo">Задание</span>
+            </div>
+            <div class="topbar-right">
+                <button onclick="goBackToCourses()">Назад к курсу</button>
+                <button onclick="openCreateTask()">Создать задание</button>
+                <button onclick="openEditTask()">Изменить задание</button>
+                <button onclick="openEditCourse()">Изменить курс</button>
+                <button class="danger" onclick="deleteCurrentTask()">Удалить задание</button>
+                <button onclick="logout()">Выйти</button>
+            </div>
+        </div>
+
+        <h1 id="taskTitle">Загрузка задания...</h1>
+        <div id="taskSubtitle" class="muted"></div>
+
+        <div class="card">
+            <h3 class="section-title">Информация о задании</h3>
+            <div id="courseMeta"></div>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Условие задания</h2>
+            <pre id="taskText">Загрузка...</pre>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">Результаты студентов</h2>
+            <div class="filter-panel">
+                <label for="groupFilter">Группа</label>
+                <select id="groupFilter" onchange="setGroupFilter(this.value)">
+                    <option value="">Все группы</option>
+                </select>
+            </div>
+            <div id="summary" class="summary">Загрузка...</div>
+            <div id="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentCourseUUID = "";
+        let currentTaskUUID = "";
+        let currentResultsData = [];
+        let currentGroupFilter = "";
+
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function getSession() {
+            const raw = localStorage.getItem("session");
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch { return null; }
+        }
+
+        function getParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function goBackToCourses() {
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            if (courseUUID) {
+                window.location.href = `teacher_course.html?course_uuid=${encodeURIComponent(courseUUID)}`;
+                return;
+            }
+            window.location.href = "teacher.html";
+        }
+
+        function logout() {
+            localStorage.removeItem("session");
+            window.location.href = "index.html";
+        }
+
+        function openCreateTask() {
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            const url = new URL("create_course.html", window.location.href);
+            if (courseUUID) url.searchParams.set("course_uuid", courseUUID);
+            window.location.href = url.toString();
+        }
+
+        function openEditTask() {
+            if (!currentCourseUUID || !currentTaskUUID) return;
+            window.location.href = `edit_task.html?course_uuid=${encodeURIComponent(currentCourseUUID)}&task_uuid=${encodeURIComponent(currentTaskUUID)}`;
+        }
+
+        function openEditCourse() {
+            if (!currentCourseUUID) return;
+            window.location.href = `edit_course.html?course_uuid=${encodeURIComponent(currentCourseUUID)}`;
+        }
+
+        function openUserHistory(studentUUID) {
+            if (!currentCourseUUID || !currentTaskUUID || !studentUUID) return;
+            const params = new URLSearchParams();
+            params.set("course_uuid", currentCourseUUID);
+            params.set("task_uuid", currentTaskUUID);
+            params.set("student_uuid", studentUUID);
+            window.location.href = `student_history.html?${params.toString()}`;
+        }
+
+        function setGroupFilter(value) {
+            currentGroupFilter = value || "";
+            applyResultsFilter();
+        }
+
+        function renderGroupFilter(groups) {
+            const select = document.getElementById("groupFilter");
+            if (!select) return;
+            const items = Array.isArray(groups) ? groups : [];
+            const options = ['<option value="">Все группы</option>'];
+            for (const group of items) {
+                const uuid = group && group.uuid ? String(group.uuid) : "";
+                const name = group && group.group_name ? String(group.group_name) : uuid;
+                if (!uuid) continue;
+                options.push(`<option value="${escapeHtml(uuid)}">${escapeHtml(name)}</option>`);
+            }
+            select.innerHTML = options.join("");
+            select.value = currentGroupFilter;
+            select.disabled = items.length === 0;
+        }
+
+        function applyResultsFilter() {
+            const filtered = currentGroupFilter
+                ? currentResultsData.filter(item => String(item.student_group_uuid || "") === currentGroupFilter)
+                : currentResultsData;
+            renderResults(filtered, currentResultsData.length);
+        }
+
+        async function deleteCurrentTask() {
+            if (!currentCourseUUID || !currentTaskUUID) return;
+            const title = document.getElementById("taskTitle").textContent || currentTaskUUID;
+            const ok = confirm(`Удалить задание "${title}"?`);
+            if (!ok) return;
+
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const body = new URLSearchParams();
+            body.set("user_uuid", session.uuid);
+            body.set("user_role", session.role);
+            body.set("course_uuid", currentCourseUUID);
+            body.set("task_uuid", currentTaskUUID);
+
+            const resp = await fetch("http://localhost:8081/teacher/task/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                body: body.toString()
+            });
+
+            const text = await resp.text();
+            if (!resp.ok) {
+                alert(text || "Не удалось удалить задание");
+                return;
+            }
+
+            window.location.href = `teacher_course.html?course_uuid=${encodeURIComponent(currentCourseUUID)}`;
+        }
+
+        function renderAllowedLanguages(langs) {
+            if (!langs || !langs.length) return "не указаны";
+            return langs.join(", ");
+        }
+
+        function renderResults(submissions, totalAvailableCount = submissions ? submissions.length : 0) {
+            const summary = document.getElementById("summary");
+            const container = document.getElementById("results");
+
+            if (!submissions || !submissions.length) {
+                summary.textContent = totalAvailableCount
+                    ? "По выбранной группе нет отправленных решений."
+                    : "Пока нет отправленных решений.";
+                container.innerHTML = "";
+                return;
+            }
+
+            const totalAttempts = submissions.reduce((sum, item) => sum + (Number(item.attempts_count) || 0), 0);
+            summary.textContent = totalAvailableCount === submissions.length
+                ? `Студентов с отправками: ${submissions.length}. Всего попыток: ${totalAttempts}.`
+                : `Показано студентов: ${submissions.length} из ${totalAvailableCount}. Всего попыток: ${totalAttempts}.`;
+
+            let html = `<div class="results-wrap"><table>`;
+            html += `<thead><tr>
+                <th>Студент</th>
+                <th>Логин</th>
+                <th>Попыток</th>
+                <th>Последняя попытка</th>
+                <th>Язык</th>
+                <th>Версия</th>
+                <th>Обновлено</th>
+                <th>Результат</th>
+            </tr></thead><tbody>`;
+
+            for (const item of submissions) {
+                const attempts = Number(item.attempts_count) || 0;
+                const lastAttempt = item.last_attempt_at || item.updated_at || item.created_at || "";
+                html += `<tr class="clickable-row" onclick="openUserHistory('${escapeHtml(item.student_uuid || "")}')">`;
+                html += `<td>${escapeHtml(item.student_name || "")}</td>`;
+                html += `<td>${escapeHtml(item.student_login || "")}</td>`;
+                html += `<td>${escapeHtml(String(attempts))}</td>`;
+                html += `<td>${escapeHtml(lastAttempt)}</td>`;
+                html += `<td>${escapeHtml(item.lang || "")}</td>`;
+                html += `<td>${escapeHtml(item.lang_version || "")}</td>`;
+                html += `<td>${escapeHtml(item.updated_at || item.created_at || "")}</td>`;
+                html += `<td><pre>${escapeHtml(item.checker_output || "")}</pre></td>`;
+                html += `</tr>`;
+            }
+
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        function renderCourseMeta(data) {
+            document.getElementById("courseMeta").innerHTML = `
+                <div class="meta">Курс: ${escapeHtml(data.course_name || "")}</div>
+                <div class="meta">Группа: ${escapeHtml(data.group_name || "")}</div>
+                <div class="meta">UUID курса: ${escapeHtml(data.course_uuid || "")}</div>
+                <div class="meta">UUID задания: ${escapeHtml(data.task_uuid || "")}</div>
+                <div class="meta">Режим: ${escapeHtml(data.task_mode || "—")}</div>
+                <div class="meta">Языки: ${escapeHtml(renderAllowedLanguages(data.allowed_languages))}</div>
+                <div class="meta">Тестов: ${escapeHtml(data.tests_count ?? 0)}</div>
+                <div class="meta">Время: ${escapeHtml(data.time_limit_ms ? `${data.time_limit_ms} мс` : "—")}</div>
+                <div class="meta">Память: ${escapeHtml(data.memory_limit_kb ? `${data.memory_limit_kb} КБ` : "—")}</div>
+            `;
+        }
+
+        async function loadTeacherTask() {
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById("userInfo").textContent =
+                `Пользователь: ${session.name} | Роль: ${session.role}`;
+
+            const params = getParams();
+            const courseUUID = params.get("course_uuid");
+            const taskUUID = params.get("task_uuid");
+
+            if (!courseUUID) {
+                document.getElementById("taskTitle").textContent = "Курс не выбран";
+                document.getElementById("taskSubtitle").textContent = "";
+                document.getElementById("taskText").textContent = "Нет параметра course_uuid";
+                document.getElementById("courseMeta").innerHTML = "";
+                document.getElementById("summary").textContent = "";
+                document.getElementById("results").innerHTML = "";
+                currentCourseUUID = "";
+                currentTaskUUID = "";
+                currentResultsData = [];
+                currentGroupFilter = "";
+                const groupSelect = document.getElementById("groupFilter");
+                if (groupSelect) {
+                    groupSelect.innerHTML = '<option value="">Все группы</option>';
+                    groupSelect.value = "";
+                    groupSelect.disabled = true;
+                }
+                return;
+            }
+
+            const courseResp = await fetch(`http://localhost:8081/teacher/courses?user_uuid=${encodeURIComponent(session.uuid)}&user_role=${encodeURIComponent(session.role)}`);
+            const courseText = await courseResp.text();
+
+            if (!courseResp.ok) {
+                document.getElementById("taskTitle").textContent = "Ошибка загрузки";
+                document.getElementById("taskSubtitle").textContent = "";
+                document.getElementById("taskText").textContent = courseText || "Не удалось загрузить данные курса";
+                document.getElementById("courseMeta").innerHTML = "";
+                document.getElementById("summary").textContent = "";
+                document.getElementById("results").innerHTML = "";
+                currentCourseUUID = "";
+                currentTaskUUID = "";
+                currentResultsData = [];
+                currentGroupFilter = "";
+                const groupSelect = document.getElementById("groupFilter");
+                if (groupSelect) {
+                    groupSelect.innerHTML = '<option value="">Все группы</option>';
+                    groupSelect.value = "";
+                    groupSelect.disabled = true;
+                }
+                return;
+            }
+
+            const courses = JSON.parse(courseText);
+            const course = courses.find(c => c.course_uuid === courseUUID);
+
+            if (!course) {
+                document.getElementById("taskTitle").textContent = "Курс не найден";
+                document.getElementById("taskSubtitle").textContent = "";
+                document.getElementById("taskText").textContent = "Этот курс недоступен или не существует";
+                document.getElementById("courseMeta").innerHTML = "";
+                document.getElementById("summary").textContent = "";
+                document.getElementById("results").innerHTML = "";
+                currentCourseUUID = "";
+                currentTaskUUID = "";
+                currentResultsData = [];
+                currentGroupFilter = "";
+                const groupSelect = document.getElementById("groupFilter");
+                if (groupSelect) {
+                    groupSelect.innerHTML = '<option value="">Все группы</option>';
+                    groupSelect.value = "";
+                    groupSelect.disabled = true;
+                }
+                return;
+            }
+
+            const tasks = Array.isArray(course.tasks) ? course.tasks : [];
+            let task = null;
+            if (taskUUID) task = tasks.find(item => item.task_uuid === taskUUID) || null;
+            if (!task) task = tasks[0] || null;
+
+            if (!task) {
+                document.getElementById("taskTitle").textContent = course.course_name || "Курс";
+                document.getElementById("taskSubtitle").textContent = course.group_name ? `Группа: ${course.group_name}` : "В этом курсе ещё нет заданий";
+                document.getElementById("taskText").textContent = "В этом курсе ещё нет заданий";
+                document.getElementById("courseMeta").innerHTML = `
+                    <div class="meta">Курс: ${escapeHtml(course.course_name || "")}</div>
+                    <div class="meta">Группа: ${escapeHtml(course.group_name || "")}</div>
+                    <div class="meta">UUID курса: ${escapeHtml(course.course_uuid || "")}</div>
+                    <div class="meta">Заданий в курсе: 0</div>
+                `;
+                document.getElementById("summary").textContent = "";
+                document.getElementById("results").innerHTML = "";
+                currentCourseUUID = course.course_uuid || "";
+                currentTaskUUID = "";
+                return;
+            }
+
+            currentCourseUUID = course.course_uuid || "";
+            currentTaskUUID = task.task_uuid || "";
+
+            const resultsResp = await fetch(`http://localhost:8081/teacher/course/results?user_uuid=${encodeURIComponent(session.uuid)}&user_role=${encodeURIComponent(session.role)}&course_uuid=${encodeURIComponent(currentCourseUUID)}&task_uuid=${encodeURIComponent(currentTaskUUID)}`);
+            const resultsText = await resultsResp.text();
+
+            if (!resultsResp.ok) {
+                document.getElementById("taskTitle").textContent = task.task_title || "Задание";
+                document.getElementById("taskSubtitle").textContent = course.group_name
+                    ? `${course.course_name || ""} · ${course.group_name}`
+                    : (course.course_name || "Просмотр задания и результатов студентов");
+                document.getElementById("taskText").textContent = task.task_text || "Текст задания отсутствует";
+                renderCourseMeta({
+                    course_name: course.course_name,
+                    group_name: course.group_name,
+                    course_uuid: currentCourseUUID,
+                    task_uuid: currentTaskUUID,
+                    task_mode: task.task_mode,
+                    allowed_languages: task.allowed_languages,
+                    tests_count: task.tests_count,
+                    time_limit_ms: task.time_limit_ms,
+                    memory_limit_kb: task.memory_limit_kb,
+                });
+                document.getElementById("summary").textContent = resultsText || "Не удалось загрузить результаты";
+                document.getElementById("results").innerHTML = "";
+                return;
+            }
+
+            const data = JSON.parse(resultsText);
+
+            document.getElementById("taskTitle").textContent = data.task_title || task.task_title || "Задание";
+            document.getElementById("taskSubtitle").textContent = data.group_name
+                ? `${data.course_name || course.course_name || ""} · ${data.group_name}`
+                : (data.course_name || course.course_name || "Просмотр задания и результатов студентов");
+            document.getElementById("taskText").textContent = data.task_text || task.task_text || "Текст задания отсутствует";
+
+            renderCourseMeta(data);
+            renderGroupFilter(data.course_groups || []);
+            currentResultsData = Array.isArray(data.submissions) ? data.submissions : [];
+            currentGroupFilter = "";
+            const groupSelect = document.getElementById("groupFilter");
+            if (groupSelect) groupSelect.value = "";
+            applyResultsFilter();
+        }
+
+        loadTeacherTask();
+    </script>
+</body>
+</html>

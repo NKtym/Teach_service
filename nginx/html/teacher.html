@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Панель преподавателя</title>
+    <style>
+        :root {
+            --bg: #1e3c72;
+            --card: rgba(255,255,255,0.08);
+            --card-strong: rgba(255,255,255,0.12);
+            --text: #ffffff;
+            --muted: rgba(255,255,255,0.8);
+            --border: rgba(255,255,255,0.14);
+            --danger: #d9534f;
+        }
+        body { font-size: 116.67%;
+            font-family: Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 13.33px;
+            margin: 0;
+        }
+        .topbar {
+            margin-bottom: 20px;
+            padding: 8px 9.33px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .topbar-left, .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            font-size: 0.68em;
+            padding: 8px 12px;
+            cursor: pointer;
+            border: none;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #183153;
+            font-weight: 700;
+        }
+        button:hover { opacity: 0.95; }
+        .danger {
+            background: var(--danger);
+            color: #fff;
+        }
+        .panel {
+            margin-top: 20px;
+            padding: 10.67px;
+            background: var(--card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+        .course-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            margin-top: 14px;
+        }
+        .course-card {
+            padding: 10.67px;
+            border-radius: 14px;
+            background: var(--card-strong);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .course-card h3 { margin: 0; }
+        .course-meta {
+            font-size: 15.33px;
+            opacity: 0.95;
+            color: var(--muted);
+        }
+        .course-actions {
+            margin-top: auto;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .muted { opacity: 0.85; }
+    
+        ::placeholder {
+            font-size: 0.68em;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <span id="userInfo">Преподаватель</span>
+        </div>
+        <div class="topbar-right">
+            <button onclick="openCreateCourse()">Создать курс / задание</button>
+            <button onclick="logout()">Выйти</button>
+        </div>
+    </div>
+
+    <h1>Панель преподавателя</h1>
+
+    <div class="panel">
+        <h2>Мои курсы</h2>
+        <div id="teacherCourses" class="muted">Загрузка...</div>
+    </div>
+
+    <script>
+        function escapeHtml(value) {
+            return String(value ?? "")
+                .replaceAll("&", "&amp;")
+                .replaceAll("<", "&lt;")
+                .replaceAll(">", "&gt;")
+                .replaceAll('"', "&quot;")
+                .replaceAll("'", "&#39;");
+        }
+
+        function getSession() {
+            const raw = localStorage.getItem("session");
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch { return null; }
+        }
+
+        function logout() {
+            localStorage.removeItem("session");
+            window.location.href = "index.html";
+        }
+
+        function openCreateCourse() {
+            window.location.href = "create_course.html";
+        }
+
+        function openCourse(courseUUID) {
+            window.location.href = `teacher_course.html?course_uuid=${encodeURIComponent(courseUUID)}`;
+        }
+
+        function openEditCourse(courseUUID) {
+            window.location.href = `edit_course.html?course_uuid=${encodeURIComponent(courseUUID)}`;
+        }
+
+        async function deleteCourse(courseUUID, courseName) {
+            if (!courseUUID) return;
+            const ok = confirm(`Удалить курс "${courseName || courseUUID}"? Это удалит все задания и результаты.`);
+            if (!ok) return;
+
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const body = new URLSearchParams();
+            body.set("user_uuid", session.uuid);
+            body.set("user_role", session.role);
+            body.set("course_uuid", courseUUID);
+
+            const resp = await fetch("http://localhost:8081/teacher/course/delete", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
+                },
+                body: body.toString()
+            });
+
+            const text = await resp.text();
+            if (!resp.ok) {
+                alert(text || "Не удалось удалить курс");
+                return;
+            }
+
+            loadTeacherCourses();
+        }
+
+        function renderCourseCard(course) {
+            const tasksCount = course.tasks_count ?? (Array.isArray(course.tasks) ? course.tasks.length : 0);
+
+            return `
+                <div class="course-card">
+                    <div>
+                        <h3>${escapeHtml(course.course_name || "Курс")}</h3>
+                        <div class="course-meta">UUID курса: ${escapeHtml(course.course_uuid || "")}</div>
+                        <div class="course-meta">Группа: ${escapeHtml(course.group_name || "—")}</div>
+                        <div class="course-meta">Заданий: ${escapeHtml(tasksCount)}</div>
+                    </div>
+                    <div class="course-actions">
+                        <button onclick="openCourse('${escapeHtml(course.course_uuid || "")}')">Открыть курс</button>
+                        <button onclick="openEditCourse('${escapeHtml(course.course_uuid || "")}')">Изменить курс</button>
+                        <button class="danger" onclick="deleteCourse('${escapeHtml(course.course_uuid || "")}', '${escapeHtml(course.course_name || "")}')">Удалить курс</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadTeacherCourses() {
+            const session = getSession();
+            if (!session || session.role !== "teacher") {
+                window.location.href = "index.html";
+                return;
+            }
+
+            document.getElementById("userInfo").textContent =
+                `Пользователь: ${session.name} | Роль: ${session.role}`;
+
+            const container = document.getElementById("teacherCourses");
+            container.textContent = "Загрузка...";
+
+            try {
+                const url = new URL("http://localhost:8081/teacher/courses");
+                url.searchParams.set("user_uuid", session.uuid);
+                url.searchParams.set("user_role", session.role);
+
+                const resp = await fetch(url.toString());
+                const text = await resp.text();
+
+                if (!resp.ok) {
+                    container.textContent = text || "Не удалось загрузить курсы";
+                    return;
+                }
+
+                const courses = JSON.parse(text);
+                if (!courses.length) {
+                    container.textContent = "Курсы не найдены";
+                    return;
+                }
+
+                container.innerHTML = `<div class="course-grid"></div>`;
+                const grid = container.querySelector(".course-grid");
+
+                for (const course of courses) {
+                    const div = document.createElement("div");
+                    div.innerHTML = renderCourseCard(course);
+                    grid.appendChild(div.firstElementChild);
+                }
+            } catch (e) {
+                container.textContent = "Ошибка загрузки курсов: " + e;
+            }
+        }
+
+        loadTeacherCourses();
+    </script>
+</body>
+</html>
